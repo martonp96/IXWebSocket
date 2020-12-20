@@ -11,6 +11,7 @@ jobs:
     - uses: actions/checkout@v1
     - uses: seanmiddleditch/gha-setup-vsdevenv@master
     - run: |
+        vcpkg install zlib:x64-windows
         vcpkg install openssl:x64-windows
     - run: |
         mkdir build

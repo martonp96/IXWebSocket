@@ -8,26 +8,86 @@ jobs:
   windows_openssl:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v1
-    - uses: seanmiddleditch/gha-setup-vsdevenv@master
-    - run: |
-        vcpkg install zlib:x64-windows
-        vcpkg install openssl:x64-windows
-    - uses: actions/upload-artifact@v2
-      with:
-        name: vcpkg-lib
-        path: c:/vcpkg/installed/x64-windows/lib
+      - uses: actions/checkout@v1
+      - uses: seanmiddleditch/gha-setup-vsdevenv@master
+      - run: |
+          vcpkg install zlib:x64-windows
+          vcpkg install openssl:x64-windows
+      - uses: actions/upload-artifact@v2
+        with:
+          name: vcpkg-lib
+          path: c:/vcpkg/installed/x64-windows/lib
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: vcpkg-bin
-        path: c:/vcpkg/installed/x64-windows/bin
-    - run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_TOOLCHAIN_FILE=c:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_CXX_COMPILER=cl.exe -DUSE_OPEN_SSL=1 -DUSE_TLS=1 -DCMAKE_BUILD_TYPE=Release ..
-    - run: cmake --build build --config Release
-    - uses: actions/upload-artifact@v2
-      with:
-        name: ixwebsocket-release
-        path: ./build/Release/
+      - uses: actions/upload-artifact@v2
+        with:
+          name: vcpkg-bin
+          path: c:/vcpkg/installed/x64-windows/bin
+      - run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_TOOLCHAIN_FILE=c:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_CXX_COMPILER=cl.exe -DUSE_OPEN_SSL=1 -DUSE_TLS=1 -DCMAKE_BUILD_TYPE=Release ..
+      - run: cmake --build build --config Release
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ixwebsocket-release
+          path: ./build/Release/
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-18.04
+    needs: [windows_openssl]
+    steps:
+      - name: Download lib artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: vcpkg-lib
+          path: lib
+
+      - name: Download bin artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: vcpkg-bin
+          path: bin
+
+      - name: Download ixwebsocket artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: ixwebsocket-release
+          path: lib
+      
+      - name: Zip artifacts
+        run: |
+          zip -r -j release lib/zlib.lib lib/libssl.lib lib/libcrypto.lib lib/zlib.lib lib/ixwebsocket.lib bin/libcrypto-1_1-x64.dll bin/libssl-1_1-x64.dll bin/zlib1.dll
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+
+      - name: Upload windows artifacts
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release.zip
+          asset_name: release.zip
+          asset_content_type: application/zip
+
+  delete-artifacts:
+    name: Delete artifacts
+    runs-on: ubuntu-18.04
+    needs: [create-release]
+    if: ${{ always() }}
+    steps:
+      - name: Delete artifacts
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: |
+            vcpkg-lib
+            vcpkg-bin
+            ixwebsocket-release

@@ -9,20 +9,22 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
-    - uses: seanmiddleditch/gha-setup-vsdevenv@master
+    - uses: lukka/run-vcpkg@v6
+      with:
+        setupOnly: true
     - run: |
-        vcpkg install zlib:x64-windows
-        vcpkg install openssl:x64-windows
+        $VCPKG_ROOT/vcpkg install zlib:x64-windows
+        $VCPKG_ROOT/vcpkg install openssl:x64-windows
 
     - uses: actions/upload-artifact@v2
       with:
         name: vcpkg-lib
-        path: $VCPKG_ROOT\installed\x64-windows\lib
+        path: $VCPKG_ROOT/installed/x64-windows/lib
 
     - uses: actions/upload-artifact@v2
       with:
         name: vcpkg-bin
-        path: $VCPKG_ROOT\installed\x64-windows\bin
+        path: $VCPKG_ROOT/installed/x64-windows/bin
 
     - run: |
         mkdir build

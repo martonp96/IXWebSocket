@@ -1,3 +1,9 @@
+name: windows
+on:
+  push:
+    paths-ignore:
+    - 'docs/**'
+
 windows_openssl:
   runs-on: windows-latest
   steps:
